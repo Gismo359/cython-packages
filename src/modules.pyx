@@ -1,53 +1,8 @@
 cpdef object find_spec(str module_name):
-    if module_name == "root.file1":
-        return ModuleSpec(
-            "root.file1",
-            loader,
-            is_package=False
-        )
-    elif module_name == "root.file2":
-        return ModuleSpec(
-            "root.file2",
-            loader,
-            is_package=False
-        )
-    elif module_name == "root.file3":
-        return ModuleSpec(
-            "root.file3",
-            loader,
-            is_package=False
-        )
-    elif module_name == "root.file4":
-        return ModuleSpec(
-            "root.file4",
-            loader,
-            is_package=False
-        )
-    elif module_name == "root":
-        return ModuleSpec(
-            "root",
-            loader,
-            is_package=True
-        )
-    elif module_name == "root.subpackage.submodule1":
-        return ModuleSpec(
-            "root.subpackage.submodule1",
-            loader,
-            is_package=False
-        )
-    elif module_name == "root.subpackage.submodule2":
-        return ModuleSpec(
-            "root.subpackage.submodule2",
-            loader,
-            is_package=False
-        )
-    elif module_name == "root.subpackage":
-        return ModuleSpec(
-            "root.subpackage",
-            loader,
-            is_package=True
-        )
-    return None
+    cdef bint is_package = module_name in ['root', 'root.subpackage']
+    if not is_package and module_name not in ['root.file1', 'root.file2', 'root.file3', 'root.file4', 'root.subpackage.submodule1', 'root.subpackage.submodule2']:
+        return None
+    return ModuleSpec(module_name, loader, is_package=is_package)
 
 cdef extern void* PyInit_root___file1()
 cdef extern void* PyInit_root___file2()

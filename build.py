@@ -78,19 +78,20 @@ for c_module in c_modules:
 
 def make_find_spec() -> str:
     code = ""
+    packages = []
+    modules = []
     for spec in module_specs:
-        if code:
-            code += "el"
-        code += (
-            f'if module_name == "{spec.module_name}":\n'
-            f"    return ModuleSpec(\n"
-            f'        "{spec.module_name}",\n'
-            f"        loader,\n"
-            f"        is_package={spec.is_package}\n"
-            f"    )\n"
-        )
+        if spec.is_package:
+            packages.append(spec.module_name)
+        else:
+            modules.append(spec.module_name)
 
-    code += "return None\n"
+    code = (
+        f"cdef bint is_package = module_name in {packages!r}\n"
+        f"if not is_package and module_name not in {modules!r}:\n"
+        f"    return None\n"
+        f"return ModuleSpec(module_name, loader, is_package=is_package)\n"
+    )
     code = textwrap.indent(code, prefix="    ")
     return f"cpdef object find_spec(str module_name):\n{code}"
 
