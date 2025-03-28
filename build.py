@@ -3,13 +3,13 @@ from __future__ import annotations
 import textwrap
 import subprocess
 import sysconfig
+import sys
 
 from dataclasses import dataclass
 from pathlib import Path
 
 py_modules: list[Path] = []
 c_modules: list[Path] = []
-
 
 root_path = Path("./src/root/")
 parent_path = root_path.parent
@@ -19,7 +19,8 @@ for path in root_path.rglob("*.py"):
 
 
 subprocess.run(
-    ["py", "-m", "cython", "-3", *map(str, py_modules)], shell=True, check=True
+    [sys.executable, "-m", "cython", "-3", "-D", *map(str, py_modules)],
+    check=True,
 )
 
 
@@ -112,7 +113,7 @@ def make_create_module() -> str:
 Path("src/modules.pyx").write_text(
     f"from importlib.machinery import ModuleSpec\n\n"
     f"ctypedef void*(*init_fn)()\n"
-    f"cdef extern from \"Python.h\":\n"
+    f'cdef extern from "Python.h":\n'
     f"    object PyModule_FromDefAndSpec(void* module_def, object spec)\n"
     f"    int PyModule_ExecDef(object module, void* module_def)\n"
     f"    void* PyModule_GetDef(object module)\n\n"
@@ -124,33 +125,52 @@ Path("src/modules.pyx").write_text(
 
 subprocess.run(
     [
-        "py",
+        sys.executable,
         "-m",
         "cython",
         "-3",
+        "-D",
         "src/bootstrap.pyx",
         "--module-name",
         root_path.stem,
     ],
-    shell=True,
     check=True,
 )
 
 include_path = sysconfig.get_path("include")
 libs_path = sysconfig.get_config_var("LIBDIR")
 
-subprocess.run(
-    [
-        "clang-cl",
-        "/LD",
-        "/DCYTHON_NO_PYINIT_EXPORT",
-        "src/bootstrap.c",
-        *map(str, c_modules),
-        f"/I{include_path}",
-        "/link",
-        "/out:root.pyd",
-        f"/LIBPATH:{libs_path}",
-    ],
-    shell=True,
-    check=True,
-)
+if sys.platform == "win32":
+    subprocess.run(
+        [
+            "clang-cl",
+            "/LD",
+            "/DCYTHON_NO_PYINIT_EXPORT",
+            "src/bootstrap.c",
+            *map(str, c_modules),
+            f"/I{include_path}",
+            "/link",
+            "/out:root.pyd",
+            f"/LIBPATH:{libs_path}",
+        ],
+        check=True,
+    )
+elif sys.platform == "linux":
+    subprocess.run(
+        [
+            "clang",
+            "-O3",
+            "-fPIC",
+            "-fwrapv",
+            "-flto=thin",
+            "-fno-strict-aliasing",
+            "-fvisibility=hidden",
+            "-shared",
+            "-DCYTHON_NO_PYINIT_EXPORT",
+            f"-I{include_path}",
+            f"-L{libs_path}",
+            f"-o{root_path.stem}.so",
+            "src/bootstrap.c",
+            *map(str, c_modules),
+        ]
+    )
