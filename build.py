@@ -28,7 +28,7 @@ subprocess.run(
         "-m",
         "cython",
         "-3",
-        "bootstrap.pyx",
+        "src/bootstrap.pyx",
         "--module-name",
         root_path.stem,
     ],
@@ -117,7 +117,7 @@ def make_create_module() -> str:
     return f"{declarations}\ncpdef object create_module(object spec):\n{code}"
 
 
-Path("modules.pyx").write_text(
+Path("src/modules.pyx").write_text(
     f"{make_find_spec()}\n{make_create_module()}", encoding="utf8"
 )
 
@@ -129,7 +129,7 @@ subprocess.run(
         "clang-cl",
         "/LD",
         "/DCYTHON_NO_PYINIT_EXPORT",
-        "bootstrap.c",
+        "src/bootstrap.c",
         *map(str, c_modules),
         f"/I{include_path}",
         "/link",
