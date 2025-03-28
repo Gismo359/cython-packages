@@ -19,8 +19,7 @@ for path in root_path.rglob("*.py"):
 
 
 subprocess.run(
-    ["py", "-m", "cython", "-3", *map(str, py_modules)],
-    shell=True,
+    ["py", "-m", "cython", "-3", *map(str, py_modules)], shell=True, check=True
 )
 subprocess.run(
     [
@@ -33,6 +32,7 @@ subprocess.run(
         root_path.stem,
     ],
     shell=True,
+    check=True,
 )
 
 
@@ -78,19 +78,23 @@ for c_module in c_modules:
 
 def make_find_spec() -> str:
     code = ""
-    packages = []
-    modules = []
+    packages = set()
+    modules = set()
     for spec in module_specs:
         if spec.is_package:
-            packages.append(spec.module_name)
+            packages.add(spec.module_name)
         else:
-            modules.append(spec.module_name)
+            modules.add(spec.module_name)
 
     code = (
         f"cdef bint is_package = module_name in {packages!r}\n"
         f"if not is_package and module_name not in {modules!r}:\n"
         f"    return None\n"
-        f"return ModuleSpec(module_name, loader, is_package=is_package)\n"
+        f"return ModuleSpec(\n"
+        f"    module_name,\n"
+        f"    loader,\n"
+        f"    is_package=is_package\n"
+        f")\n"
     )
     code = textwrap.indent(code, prefix="    ")
     return f"cpdef object find_spec(str module_name):\n{code}"
@@ -138,4 +142,5 @@ subprocess.run(
         f"/LIBPATH:{libs_path}",
     ],
     shell=True,
+    check=True,
 )
