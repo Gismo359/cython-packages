@@ -1,6 +1,16 @@
+from importlib.machinery import ModuleSpec
+
+ctypedef void*(*init_fn)()
+cdef extern from "Python.h":
+    object PyModule_FromDefAndSpec(void* module_def, object spec)
+    int PyModule_ExecDef(object module, void* module_def)
+    void* PyModule_GetDef(object module)
+
+cdef object loader
+
 cpdef object find_spec(str module_name):
-    cdef bint is_package = module_name in {'root', 'root.subpackage'}
-    if not is_package and module_name not in {'root.file1', 'root.file2', 'root.subpackage.submodule1', 'root.file3', 'root.file4', 'root.subpackage.submodule2'}:
+    cdef bint is_package = module_name in {'root.subpackage', 'root'}
+    if not is_package and module_name not in {'root.subpackage.submodule2', 'root.file2', 'root.subpackage.submodule1', 'root.file4', 'root.file3', 'root.file1'}:
         return None
     return ModuleSpec(
         module_name,

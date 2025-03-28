@@ -21,19 +21,6 @@ for path in root_path.rglob("*.py"):
 subprocess.run(
     ["py", "-m", "cython", "-3", *map(str, py_modules)], shell=True, check=True
 )
-subprocess.run(
-    [
-        "py",
-        "-m",
-        "cython",
-        "-3",
-        "src/bootstrap.pyx",
-        "--module-name",
-        root_path.stem,
-    ],
-    shell=True,
-    check=True,
-)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -123,7 +110,30 @@ def make_create_module() -> str:
 
 
 Path("src/modules.pyx").write_text(
-    f"{make_find_spec()}\n{make_create_module()}", encoding="utf8"
+    f"from importlib.machinery import ModuleSpec\n\n"
+    f"ctypedef void*(*init_fn)()\n"
+    f"cdef extern from \"Python.h\":\n"
+    f"    object PyModule_FromDefAndSpec(void* module_def, object spec)\n"
+    f"    int PyModule_ExecDef(object module, void* module_def)\n"
+    f"    void* PyModule_GetDef(object module)\n\n"
+    f"cdef object loader\n\n"
+    f"{make_find_spec()}\n"
+    f"{make_create_module()}",
+    encoding="utf8",
+)
+
+subprocess.run(
+    [
+        "py",
+        "-m",
+        "cython",
+        "-3",
+        "src/bootstrap.pyx",
+        "--module-name",
+        root_path.stem,
+    ],
+    shell=True,
+    check=True,
 )
 
 include_path = sysconfig.get_path("include")
