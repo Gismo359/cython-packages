@@ -6,9 +6,6 @@ from importlib.abc import Loader, MetaPathFinder
 cdef extern from "bootstrap.h":
     pass
 
-cpdef exec_module(object module):
-    PyModule_ExecDef(module, PyModule_GetDef(module))
-
 class MyMetaFinder(MetaPathFinder):
     def find_spec(self, fullname, path, target=None):
         return find_spec(fullname)
@@ -24,8 +21,4 @@ sys.meta_path.insert(0, MyMetaFinder())
 include "modules.pyx"
 
 loader = MyLoader()
-
-spec = find_spec("root")
-module = create_module(spec)
-exec_module(module)
-sys.modules["root"] = module
+initialize_modules(loader)

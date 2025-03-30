@@ -1,53 +1,86 @@
+import sys
+
 from importlib.machinery import ModuleSpec
 
-ctypedef void*(*init_fn)()
+ctypedef object(*init_fn)()
 cdef extern from "Python.h":
     object PyModule_FromDefAndSpec(void* module_def, object spec)
     int PyModule_ExecDef(object module, void* module_def)
     void* PyModule_GetDef(object module)
 
-cdef object loader
+cdef extern object PyInit_root___file1()
+cdef extern object PyInit_root___file2()
+cdef extern object PyInit_root___file3()
+cdef extern object PyInit_root___file4()
+cdef extern object PyInit_root___init___()
+cdef extern object PyInit_root___subpackage___submodule1()
+cdef extern object PyInit_root___subpackage___submodule2()
+cdef extern object PyInit_root___subpackage___init___()
+
+cdef dict module_infos = dict()
+cdef void initialize_modules(object loader):
+    cdef str name_0 = 'root.file1'
+    cdef object spec_0 = ModuleSpec(name_0, loader, is_package=False)
+    cdef object module_def_0 = PyInit_root___file1()
+    cdef object module_0 = PyModule_FromDefAndSpec(<void*>module_def_0,  spec_0)
+    module_infos[name_0] = (spec_0, module_0)
+
+    cdef str name_1 = 'root.file2'
+    cdef object spec_1 = ModuleSpec(name_1, loader, is_package=False)
+    cdef object module_def_1 = PyInit_root___file2()
+    cdef object module_1 = PyModule_FromDefAndSpec(<void*>module_def_1,  spec_1)
+    module_infos[name_1] = (spec_1, module_1)
+
+    cdef str name_2 = 'root.file3'
+    cdef object spec_2 = ModuleSpec(name_2, loader, is_package=False)
+    cdef object module_def_2 = PyInit_root___file3()
+    cdef object module_2 = PyModule_FromDefAndSpec(<void*>module_def_2,  spec_2)
+    module_infos[name_2] = (spec_2, module_2)
+
+    cdef str name_3 = 'root.file4'
+    cdef object spec_3 = ModuleSpec(name_3, loader, is_package=False)
+    cdef object module_def_3 = PyInit_root___file4()
+    cdef object module_3 = PyModule_FromDefAndSpec(<void*>module_def_3,  spec_3)
+    module_infos[name_3] = (spec_3, module_3)
+
+    cdef str name_4 = 'root'
+    cdef object spec_4 = ModuleSpec(name_4, loader, is_package=True)
+    cdef object module_def_4 = PyInit_root___init___()
+    cdef object module_4 = PyModule_FromDefAndSpec(<void*>module_def_4,  spec_4)
+    module_infos[name_4] = (spec_4, module_4)
+
+    cdef str name_5 = 'root.subpackage.submodule1'
+    cdef object spec_5 = ModuleSpec(name_5, loader, is_package=False)
+    cdef object module_def_5 = PyInit_root___subpackage___submodule1()
+    cdef object module_5 = PyModule_FromDefAndSpec(<void*>module_def_5,  spec_5)
+    module_infos[name_5] = (spec_5, module_5)
+
+    cdef str name_6 = 'root.subpackage.submodule2'
+    cdef object spec_6 = ModuleSpec(name_6, loader, is_package=False)
+    cdef object module_def_6 = PyInit_root___subpackage___submodule2()
+    cdef object module_6 = PyModule_FromDefAndSpec(<void*>module_def_6,  spec_6)
+    module_infos[name_6] = (spec_6, module_6)
+
+    cdef str name_7 = 'root.subpackage'
+    cdef object spec_7 = ModuleSpec(name_7, loader, is_package=True)
+    cdef object module_def_7 = PyInit_root___subpackage___init___()
+    cdef object module_7 = PyModule_FromDefAndSpec(<void*>module_def_7,  spec_7)
+    module_infos[name_7] = (spec_7, module_7)
+
+    PyModule_ExecDef(module_4, <void*>module_def_7)
+    sys.modules[name_4] = module_4
 
 cpdef object find_spec(str module_name):
-    cdef bint is_package = module_name in {'root.subpackage', 'root'}
-    if not is_package and module_name not in {'root.subpackage.submodule1', 'root.subpackage.submodule2', 'root.file3', 'root.file2', 'root.file1', 'root.file4'}:
+    cdef tuple module_info = module_infos.get(module_name)
+    if module_info is None:
         return None
-    return ModuleSpec(
-        module_name,
-        loader,
-        is_package=is_package
-    )
-
-cdef extern void* PyInit_root___init___()
-cdef extern void* PyInit_root___file1()
-cdef extern void* PyInit_root___file2()
-cdef extern void* PyInit_root___file3()
-cdef extern void* PyInit_root___file4()
-cdef extern void* PyInit_root___subpackage___init___()
-cdef extern void* PyInit_root___subpackage___submodule1()
-cdef extern void* PyInit_root___subpackage___submodule2()
+    return module_info[0]
 
 cpdef object create_module(object spec):
-    cdef void* module_def
-    if spec.name == "root":
-        module_def = PyInit_root___init___()
-    elif spec.name == "root.file1":
-        module_def = PyInit_root___file1()
-    elif spec.name == "root.file2":
-        module_def = PyInit_root___file2()
-    elif spec.name == "root.file3":
-        module_def = PyInit_root___file3()
-    elif spec.name == "root.file4":
-        module_def = PyInit_root___file4()
-    elif spec.name == "root.subpackage":
-        module_def = PyInit_root___subpackage___init___()
-    elif spec.name == "root.subpackage.submodule1":
-        module_def = PyInit_root___subpackage___submodule1()
-    elif spec.name == "root.subpackage.submodule2":
-        module_def = PyInit_root___subpackage___submodule2()
-    else:
+    cdef tuple module_info = module_infos.get(spec.name)
+    if module_info is None:
         return None
-    return PyModule_FromDefAndSpec(
-        module_def,
-        spec
-    )
+    return module_info[1]
+
+cpdef void exec_module(object module):
+    PyModule_ExecDef(module, PyModule_GetDef(module))

@@ -8,6 +8,15 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+# import builtins
+# for obj in object.__subclasses__():
+#     if obj.__name__ != "moduledef":
+#         continue
+
+#     print(obj, obj.__module__)
+
+# exit(0)
+
 py_modules: list[Path] = []
 c_modules: list[Path] = []
 
@@ -64,62 +73,68 @@ for c_module in c_modules:
     )
 
 
-def make_find_spec() -> str:
-    code = ""
-    packages = set()
-    modules = set()
-    for spec in module_specs:
-        if spec.is_package:
-            packages.add(spec.module_name)
-        else:
-            modules.add(spec.module_name)
-
-    code = (
-        f"cdef bint is_package = module_name in {packages!r}\n"
-        f"if not is_package and module_name not in {modules!r}:\n"
-        f"    return None\n"
-        f"return ModuleSpec(\n"
-        f"    module_name,\n"
-        f"    loader,\n"
-        f"    is_package=is_package\n"
-        f")\n"
-    )
-    code = textwrap.indent(code, prefix="    ")
-    return f"cpdef object find_spec(str module_name):\n{code}"
-
-
-def make_create_module() -> str:
+def generate_code() -> str:
     declarations = ""
-    code = ""
+    module_defs = "cdef dict module_defs = {\n"
     for spec in module_specs:
-        if code:
-            code += "el"
-        code += (
-            f'if spec.name == "{spec.module_name}":\n'
-            f"    module_def = {spec.function_name}()\n"
+        declarations += f"cdef extern object {spec.function_name}()\n"
+        module_defs += f"    {spec.module_name!r}: {spec.function_name}(),\n"
+    module_defs += "}\n"
+
+    body = ""
+    root_idx: int
+    for idx, spec in enumerate(module_specs):
+        if spec.module_name == root_path.stem:
+            root_idx = idx
+
+        body += (
+            f"cdef str name_{idx} = {spec.module_name!r}\n"
+            f"cdef object spec_{idx} = ModuleSpec(name_{idx}, loader, is_package={spec.is_package})\n"
+            f"cdef object module_def_{idx} = {spec.function_name}()\n"
+            f"cdef object module_{idx} = PyModule_FromDefAndSpec(<void*>module_def_{idx},  spec_{idx})\n"
+            f"module_infos[name_{idx}] = (spec_{idx}, module_{idx})\n\n"
         )
 
-    code = "cdef void* module_def\n" + code
+    body += (
+        f"PyModule_ExecDef(module_{root_idx}, <void*>module_def_{idx})\n"
+        f"sys.modules[name_{root_idx}] = module_{root_idx}\n"
+    )
 
-    for spec in module_specs:
-        declarations += f"cdef extern void* {spec.function_name}()\n"
-
-    code += "else:\n    return None\n"
-    code += "return PyModule_FromDefAndSpec(\n    module_def,\n    spec\n)\n"
-    code = textwrap.indent(code, prefix="    ")
-    return f"{declarations}\ncpdef object create_module(object spec):\n{code}"
+    body = textwrap.indent(body, prefix="    ")
+    return (
+        f"import sys\n"
+        f"\n"
+        f"from importlib.machinery import ModuleSpec\n"
+        f"\n"
+        f"ctypedef object(*init_fn)()\n"
+        f'cdef extern from "Python.h":\n'
+        f"    object PyModule_FromDefAndSpec(void* module_def, object spec)\n"
+        f"    int PyModule_ExecDef(object module, void* module_def)\n"
+        f"    void* PyModule_GetDef(object module)\n"
+        f"\n"
+        f"{declarations}\n"
+        f"cdef dict module_infos = dict()\n"
+        f"cdef void initialize_modules(object loader):\n"
+        f"{body}\n"
+        f"cpdef object find_spec(str module_name):\n"
+        f"    cdef tuple module_info = module_infos.get(module_name)\n"
+        f"    if module_info is None:\n"
+        f"        return None\n"
+        f"    return module_info[0]\n"
+        f"\n"
+        f"cpdef object create_module(object spec):\n"
+        f"    cdef tuple module_info = module_infos.get(spec.name)\n"
+        f"    if module_info is None:\n"
+        f"        return None\n"
+        f"    return module_info[1]\n"
+        f"\n"
+        f"cpdef void exec_module(object module):\n"
+        f"    PyModule_ExecDef(module, PyModule_GetDef(module))\n"
+    )
 
 
 Path("src/modules.pyx").write_text(
-    f"from importlib.machinery import ModuleSpec\n\n"
-    f"ctypedef void*(*init_fn)()\n"
-    f'cdef extern from "Python.h":\n'
-    f"    object PyModule_FromDefAndSpec(void* module_def, object spec)\n"
-    f"    int PyModule_ExecDef(object module, void* module_def)\n"
-    f"    void* PyModule_GetDef(object module)\n\n"
-    f"cdef object loader\n\n"
-    f"{make_find_spec()}\n"
-    f"{make_create_module()}",
+    generate_code(),
     encoding="utf8",
 )
 
