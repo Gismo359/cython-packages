@@ -77,7 +77,7 @@ def generate_code() -> str:
     declarations = ""
     module_defs = "cdef dict module_defs = {\n"
     for spec in module_specs:
-        declarations += f"cdef extern object {spec.function_name}()\n"
+        declarations += f"cdef extern void* {spec.function_name}()\n"
         module_defs += f"    {spec.module_name!r}: {spec.function_name}(),\n"
     module_defs += "}\n"
 
@@ -90,13 +90,19 @@ def generate_code() -> str:
         body += (
             f"cdef str name_{idx} = {spec.module_name!r}\n"
             f"cdef object spec_{idx} = ModuleSpec(name_{idx}, loader, is_package={spec.is_package})\n"
-            f"cdef object module_def_{idx} = {spec.function_name}()\n"
-            f"cdef object module_{idx} = PyModule_FromDefAndSpec(<void*>module_def_{idx},  spec_{idx})\n"
-            f"module_infos[name_{idx}] = (spec_{idx}, module_{idx})\n\n"
+            f"cdef void* module_def_{idx} = {spec.function_name}()\n"
+            f"cdef object module_{idx} = PyModule_FromDefAndSpec(module_def_{idx},  spec_{idx})\n"
+            f"\n"
         )
 
+    body += "global module_infos\n"
+    body += "module_infos = {\n"
+    for idx, _ in enumerate(module_specs):
+        body += f"    name_{idx}: (spec_{idx}, module_{idx}),\n"
+    body += "}\n\n"
+
     body += (
-        f"PyModule_ExecDef(module_{root_idx}, <void*>module_def_{idx})\n"
+        f"PyModule_ExecDef(module_{root_idx}, module_def_{idx})\n"
         f"sys.modules[name_{root_idx}] = module_{root_idx}\n"
     )
 
@@ -113,7 +119,7 @@ def generate_code() -> str:
         f"    void* PyModule_GetDef(object module)\n"
         f"\n"
         f"{declarations}\n"
-        f"cdef dict module_infos = dict()\n"
+        f"cdef dict module_infos\n"
         f"cdef void initialize_modules(object loader):\n"
         f"{body}\n"
         f"cpdef object find_spec(str module_name):\n"
@@ -165,7 +171,7 @@ if sys.platform == "win32":
             *map(str, c_modules),
             f"/I{include_path}",
             "/link",
-            "/out:root.pyd",
+            f"/out:{root_path.stem}.pyd",
             f"/LIBPATH:{libs_path}",
         ],
         check=True,

@@ -20,5 +20,4 @@ sys.meta_path.insert(0, MyMetaFinder())
 
 include "modules.pyx"
 
-loader = MyLoader()
-initialize_modules(loader)
+initialize_modules(MyLoader())
