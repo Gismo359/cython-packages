@@ -1,1 +1,0 @@
-#undef CYTHON_NO_PYINIT_EXPORT
