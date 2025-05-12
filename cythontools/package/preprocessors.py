@@ -1,13 +1,13 @@
 """
-    TODO@Daniel:
-      This module needs a complete rewrite
+TODO@Daniel:
+  This module needs a complete rewrite
 
-      Planned changes include:
-       - Using `pluggy` for managing preprocessors
-       - Writing or reusing a third party python/cython parser
-         instead of `ast` and `Cython.Compiler` (see `MainPreprocessor.process_pyx_module`)
-       - Replace `SourceEditor` with a solution that doesn't require
-         rebuilding the whole source code after each preprocessor
+  Planned changes include:
+   - Using `pluggy` for managing preprocessors
+   - Writing or reusing a third party python/cython parser
+     instead of `ast` and `Cython.Compiler` (see `MainPreprocessor.process_pyx_module`)
+   - Replace `SourceEditor` with a solution that doesn't require
+     rebuilding the whole source code after each preprocessor
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ from typing import Protocol
 from dataclasses import dataclass, field
 
 from cythontools.package.common import ModuleDef
-
 
 
 def default_preprocessors() -> list[BasePreprocessor]:
@@ -171,10 +170,10 @@ class MainPreprocessor(BasePreprocessor):
         # NOTE@Daniel:
         #   The Cython AST modules do not provide a meaningful end_pos()
         #   There is no way to get the length (in source code) of any `Node`
-        #   
+        #
         #   Currently, this is not a big issue but will hinder more complicated
         #   parsers
-        #   
+        #
         #   Possible workarounds include:
         #    - Using other internal Cython API to re-parse some `Nodes`
         #    - Using a third party parser which offers better API
@@ -240,20 +239,3 @@ class MainPreprocessor(BasePreprocessor):
             )
 
         return module.with_source(pyx_source=source_editor.build())
-
-
-from dataclasses import dataclass
-
-@dataclass
-class A:
-  a: int
-
-
-@dataclass(frozen=True)
-class B(A):
-  b: int
-
-
-b = B(a=0, b=1)
-b.a = 0
-b.b = 1
