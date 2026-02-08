@@ -20,3 +20,8 @@ backend-path = ["."]
 [tool.hatch.build.targets.wheel.hooks.cythontools]
 package_paths = ["cythontools"]
 check_timestamps = false
+
+[tool.hatch.envs.default]
+dev-mode = false
+skip-install = true
+dependencies = ["hatchling"]
