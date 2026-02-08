@@ -216,7 +216,6 @@ class MainPreprocessor(BasePreprocessor):
                 lhs, rhs = rhs, lhs
 
             if not isinstance(lhs, NameNode):
-                print(6)
                 continue
 
             if lhs.name != "__name__":
