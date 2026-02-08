@@ -12,8 +12,6 @@ TODO@Daniel:
 
 from __future__ import annotations
 
-import ast
-
 from typing import Protocol
 from dataclasses import dataclass, field
 
@@ -112,6 +110,8 @@ class BasePreprocessor(Protocol):
 class MainPreprocessor(BasePreprocessor):
     def process_py_module(self, module: ModuleDef) -> ModuleDef:
         assert module.py_source is not None
+
+        import ast
 
         source_editor = SourceEditor(source=module.py_source)
 
