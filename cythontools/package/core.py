@@ -97,8 +97,8 @@ def cythonize_module(
     )
 
     new_text: str = new_text.replace(
-        f"extern int __pyx_module_is_main_{stem}",
-        f"static int __pyx_module_is_main_{stem}",
+        f"extern int __pyx_module_is_main_{stem};\nint __pyx_module_is_main_{stem} = ",
+        f"static int __pyx_module_is_main_{stem} = ",
         count=1,
     )
 
@@ -232,15 +232,15 @@ def cythonize_package(
             c_path.parent.mkdir(parents=True, exist_ok=True)
 
             py_source = None
-            if (py_path := module_path.with_name(".py")) and py_path.exists():
+            if (py_path := module_path.with_suffix(".py")) and py_path.exists():
                 py_source = py_path.read_text()
 
             pyx_source = None
-            if (pyx_path := module_path.with_name(".pyx")) and pyx_path.exists():
+            if (pyx_path := module_path.with_suffix(".pyx")) and pyx_path.exists():
                 pyx_source = pyx_path.read_text()
 
             pxd_source = None
-            if (pxd_path := module_path.with_name(".pxd")) and pxd_path.exists():
+            if (pxd_path := module_path.with_suffix(".pxd")) and pxd_path.exists():
                 pxd_source = pxd_path.read_text()
 
             module_defs.append(
